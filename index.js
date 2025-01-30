@@ -468,16 +468,22 @@ async function run() {
       verifyToken,
       verifyAdminOrDeliveryman,
       async (req, res) => {
-        const { deliveryManId } = req.query;
-        try {
-          if (deliveryManId) {
-            const parcels = await parcelsCollection
-              .find({ deliveryManId })
-              .toArray();
-            return res.send(parcels);
-          }
+        const { from, to, deliveryManId } = req.query;
+        const query = {};
 
-          const parcels = await parcelsCollection.find().toArray();
+        if (from && to) {
+          query.deliveryDate = {
+            $gte: new Date(from),
+            $lte: new Date(to),
+          };
+        }
+
+        if (deliveryManId) {
+          query.deliveryManId = deliveryManId;
+        }
+
+        try {
+          const parcels = await parcelsCollection.find(query).toArray();
           res.send(parcels);
         } catch (error) {
           res
@@ -956,7 +962,14 @@ async function run() {
       try {
         const bookingsByDate = await parcelsCollection
           .aggregate([
-            { $group: { _id: "$createdAt", count: { $sum: 1 } } },
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                },
+                count: { $sum: 1 },
+              },
+            },
             { $sort: { _id: 1 } },
           ])
           .toArray();
@@ -965,7 +978,9 @@ async function run() {
           .aggregate([
             {
               $group: {
-                _id: "$createdAt",
+                _id: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                },
                 booked: { $sum: 1 },
                 delivered: {
                   $sum: { $cond: [{ $eq: ["$status", "Delivered"] }, 1, 0] },
@@ -978,11 +993,11 @@ async function run() {
 
         res.send({
           bookingsByDate: bookingsByDate.map((item) => ({
-            date: new Date(item._id).toLocaleDateString(),
+            date: item._id,
             count: item.count,
           })),
           bookedVsDelivered: bookedVsDelivered.map((item) => ({
-            date: new Date(item._id).toLocaleDateString(),
+            date: item._id,
             booked: item.booked,
             delivered: item.delivered,
           })),
@@ -1027,8 +1042,6 @@ async function run() {
     // Fetch notifications for the logged-in user
     app.get("/notifications", verifyToken, async (req, res) => {
       const email = req.user?.email;
-      console.log(email);
-
       if (!email) {
         return res.status(400).send({ message: "Email is required" });
       }
@@ -1048,7 +1061,6 @@ async function run() {
       }
     });
 
-    // Mark notifications as read
     app.patch("/notifications/read", verifyToken, async (req, res) => {
       const email = req.user?.email;
 
