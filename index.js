@@ -356,6 +356,7 @@ async function run() {
           .toArray();
         const notifications = adminUsers.map((admin) => ({
           email: admin.email,
+          image: admin.image,
           message: `New parcel booked by ${name}`,
           read: false,
           createdAt: new Date(),
