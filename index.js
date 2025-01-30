@@ -1094,6 +1094,33 @@ async function run() {
       }
     });
 
+    app.patch("/notifications/:id/read", verifyToken, async (req, res) => {
+      const { id } = req.params;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid notification ID" });
+      }
+
+      try {
+        const result = await notificationsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { read: true } }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Notification not found" });
+        }
+
+        res.send({ success: true, message: "Notification marked as read" });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to mark notification as read",
+          error: error.message,
+        });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
