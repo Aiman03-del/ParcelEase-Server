@@ -712,6 +712,16 @@ async function run() {
           }
         }
 
+        // Send notification to user
+        if (parcel && parcel.email) {
+          await notificationsCollection.insertOne({
+            email: parcel.email,
+            message: `Your parcel has been ${status}`,
+            read: false,
+            createdAt: new Date(),
+          });
+        }
+
         res.send({ success: true, message: `Parcel ${status} successfully` });
       } catch (error) {
         res.status(500).send({
