@@ -662,6 +662,19 @@ async function run() {
             });
           }
 
+          // Send notification to user
+          const parcel = await parcelsCollection.findOne({
+            _id: new ObjectId(id),
+          });
+          if (parcel && parcel.email) {
+            await notificationsCollection.insertOne({
+              email: parcel.email,
+              message: `Your parcel has been assigned to a delivery man`,
+              read: false,
+              createdAt: new Date(),
+            });
+          }
+
           res.send({ success: true, message: "Parcel assigned successfully" });
         } catch (error) {
           res.status(500).send({
@@ -706,6 +719,7 @@ async function run() {
           if (deliveryMan) {
             await notificationsCollection.insertOne({
               email: deliveryMan.email,
+              image: deliveryMan.image,
               message: `Parcel has been ${status}`,
               read: false,
               createdAt: new Date(),
@@ -717,6 +731,7 @@ async function run() {
         if (parcel && parcel.email) {
           await notificationsCollection.insertOne({
             email: parcel.email,
+            image: parcel.image,
             message: `Your parcel has been ${status}`,
             read: false,
             createdAt: new Date(),
@@ -889,7 +904,6 @@ async function run() {
         const reviews = await reviewsCollection
           .find({ deliveryManId: new ObjectId(deliveryManId) })
           .toArray();
-
         res.status(200).json(reviews);
       } catch (error) {
         res.status(500).json({
