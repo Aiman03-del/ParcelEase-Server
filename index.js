@@ -268,7 +268,7 @@ async function run() {
         });
       }
     });
-    // Book a Parcel
+
     app.post("/bookParcel", verifyToken, async (req, res) => {
       const {
         name,
