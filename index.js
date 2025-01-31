@@ -335,7 +335,6 @@ async function run() {
       try {
         const result = await parcelsCollection.insertOne(newParcel);
 
-        // Update totalParcelBooked for the user
         const user = await usersCollection.findOne({ email });
         if (user) {
           await usersCollection.updateOne(
@@ -346,11 +345,9 @@ async function run() {
           await usersCollection.insertOne({
             email,
             totalParcelBooked: 1,
-            // ...other user data if needed
           });
         }
 
-        // Send notification to admin
         const adminUsers = await usersCollection
           .find({ role: "admin" })
           .toArray();
