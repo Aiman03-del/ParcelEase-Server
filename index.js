@@ -696,7 +696,6 @@ async function run() {
           return res.status(404).send({ message: "Parcel not found" });
         }
 
-        // Send notification to delivery man
         const parcel = await parcelsCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -715,7 +714,6 @@ async function run() {
           }
         }
 
-        // Send notification to user
         if (parcel && parcel.email) {
           await notificationsCollection.insertOne({
             email: parcel.email,
@@ -736,7 +734,6 @@ async function run() {
       }
     });
 
-    // Fetch all delivery men
     app.get("/deliverymen", verifyToken, verifyAdmin, async (req, res) => {
       try {
         const deliverymenUsers = await usersCollection
@@ -1034,7 +1031,7 @@ async function run() {
       try {
         console.log(`Creating payment intent for amount: ${amount}`);
         const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount * 100, // amount in cents
+          amount: amount * 100,
           currency: "usd",
         });
 
@@ -1052,7 +1049,6 @@ async function run() {
       }
     });
 
-    // Fetch notifications for the logged-in user
     app.get("/notifications", verifyToken, async (req, res) => {
       const email = req.user?.email;
       if (!email) {
