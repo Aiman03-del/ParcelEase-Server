@@ -616,7 +616,6 @@ async function run() {
       }
     });
 
-    // Assign parcel to delivery man
     app.patch(
       "/assign-parcel/:id",
       verifyToken,
