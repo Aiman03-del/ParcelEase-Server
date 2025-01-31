@@ -251,7 +251,6 @@ async function run() {
             .send({ success: false, message: `User is already a ${type}` });
         }
 
-        // Update the user's role
         const result = await usersCollection.updateOne(
           { _id: new ObjectId(id) },
           { $set: { role: type } }
