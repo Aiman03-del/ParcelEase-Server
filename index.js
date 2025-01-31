@@ -640,7 +640,6 @@ async function run() {
             return res.status(404).send({ message: "Parcel not found" });
           }
 
-          // Send notification to delivery man
           const deliveryMan = await usersCollection.findOne({
             _id: new ObjectId(deliveryManId),
           });
