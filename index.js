@@ -400,7 +400,6 @@ async function run() {
       }
     });
 
-    // Cancel a parcel
     app.patch("/cancel-parcel/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
 
