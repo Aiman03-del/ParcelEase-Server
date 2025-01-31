@@ -652,7 +652,6 @@ async function run() {
             });
           }
 
-          // Send notification to user
           const parcel = await parcelsCollection.findOne({
             _id: new ObjectId(id),
           });
@@ -676,7 +675,6 @@ async function run() {
       }
     );
 
-    // Update parcel status (deliver or cancel)
     app.patch("/update-parcel-status/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const { status } = req.body;
