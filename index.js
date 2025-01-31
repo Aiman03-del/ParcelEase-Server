@@ -197,7 +197,6 @@ async function run() {
       res.json(user);
     });
 
-    // Save new user
     app.post("/users/:email", async (req, res) => {
       const email = req.params.email;
       const userData = req.body;
@@ -227,7 +226,6 @@ async function run() {
         });
       }
     });
-    // Update user role
     app.patch("/users/:id", async (req, res) => {
       const { id } = req.params;
       const { type } = req.body;
