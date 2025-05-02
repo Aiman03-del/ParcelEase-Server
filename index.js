@@ -25,6 +25,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
 
+const jwtSecret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
   console.log("Token received:", token);
@@ -32,7 +34,7 @@ const verifyToken = async (req, res, next) => {
   if (!token) {
     return res.status(401).send({ message: "unauthorized access" });
   }
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  jwt.verify(token, jwtSecret, (err, decoded) => {
     if (err) {
       console.log("Token verification error:", err);
       return res.status(401).send({ message: "unauthorized access" });
@@ -66,7 +68,7 @@ async function run() {
   try {
     app.post("/jwt", async (req, res) => {
       const email = req.body;
-      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+      const token = jwt.sign(email, jwtSecret, {
         expiresIn: "365d",
       });
 
