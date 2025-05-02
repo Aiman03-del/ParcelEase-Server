@@ -6,6 +6,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const morgan = require("morgan");
 const stripe = require("stripe")(process.env.VITE_SECRET_KEY);
+const http = require("http");
+const { Server } = require("socket.io");
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -358,6 +360,11 @@ async function run() {
         }));
         await notificationsCollection.insertMany(notifications);
 
+        // Emit real-time notification to connected clients
+        notifications.forEach((notification) => {
+          io.emit("new-notification", notification);
+        });
+
         res.send({
           success: true,
           message: "Parcel booked successfully!",
@@ -618,64 +625,61 @@ async function run() {
       }
     });
 
-    app.patch(
-      "/assign-parcel/:id",
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
-        const { id } = req.params;
-        const { deliveryManId } = req.body;
-
-        if (!ObjectId.isValid(id) || !ObjectId.isValid(deliveryManId)) {
-          return res
-            .status(400)
-            .send({ message: "Invalid parcel or delivery man ID" });
-        }
-
-        try {
-          const result = await parcelsCollection.updateOne(
-            { _id: new ObjectId(id) },
-            { $set: { deliveryManId, status: "assigned" } }
-          );
-
-          if (result.matchedCount === 0) {
-            return res.status(404).send({ message: "Parcel not found" });
-          }
-
-          const deliveryMan = await usersCollection.findOne({
-            _id: new ObjectId(deliveryManId),
-          });
-          if (deliveryMan) {
-            await notificationsCollection.insertOne({
-              email: deliveryMan.email,
-              message: `You have been assigned a new parcel`,
-              read: false,
-              createdAt: new Date(),
-            });
-          }
-
-          const parcel = await parcelsCollection.findOne({
-            _id: new ObjectId(id),
-          });
-          if (parcel && parcel.email) {
-            await notificationsCollection.insertOne({
-              email: parcel.email,
-              message: `Your parcel has been assigned to a delivery man`,
-              read: false,
-              createdAt: new Date(),
-            });
-          }
-
-          res.send({ success: true, message: "Parcel assigned successfully" });
-        } catch (error) {
-          res.status(500).send({
-            success: false,
-            message: "Failed to assign parcel",
-            error: error.message,
-          });
-        }
+    app.patch("/assign-parcel/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const { id } = req.params;
+      const { deliveryManId } = req.body;
+    
+      if (!ObjectId.isValid(id) || !ObjectId.isValid(deliveryManId)) {
+        return res
+          .status(400)
+          .send({ message: "Invalid parcel or delivery man ID" });
       }
-    );
+    
+      try {
+        const result = await parcelsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { deliveryManId, status: "assigned" } }
+        );
+    
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Parcel not found" });
+        }
+    
+        const deliveryMan = await usersCollection.findOne({
+          _id: new ObjectId(deliveryManId),
+        });
+    
+        if (deliveryMan) {
+          const notification = {
+            email: deliveryMan.email,
+            message: `You have been assigned a new parcel.`,
+            image: deliveryMan.image,
+            name: deliveryMan.name,
+            phone: deliveryMan.phone,
+            role: deliveryMan.role,
+            averageRating: deliveryMan.averageRating,
+            totalDelivered: deliveryMan.totalDelivered,
+            deliveryDate: deliveryMan.deliveryDate,
+            read: false,
+            createdAt: new Date(),
+          };
+    
+          await notificationsCollection.insertOne(notification);
+    
+          // Emit real-time notification to the assigned delivery man
+          io.emit("new-notification", notification);
+        }
+    
+        res.send({ success: true, message: "Parcel assigned successfully" });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to assign parcel",
+          error: error.message,
+        });
+      }
+    });
+    
 
     app.patch("/update-parcel-status/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
@@ -1134,6 +1138,30 @@ run().catch(console.dir);
 app.get("/", (req, res) => {
   res.send("Hello from ParcelEase Server..");
 });
-app.listen(port, () => {
+
+// Create HTTP server and attach Socket.IO
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "https://parcel-ease-76d37.web.app",
+      "https://parcel-ease-76d37.firebaseapp.com",
+    ],
+    credentials: true,
+  },
+});
+
+// Socket.IO connection handler
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected:", socket.id);
+  });
+});
+
+// Start the server
+server.listen(port, () => {
   console.log(`ParcelEase is running on port ${port}`);
 });
