@@ -15,8 +15,8 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:5173",
+    "https://parcel-ease.netlify.app",
     "https://parcel-ease-76d37.web.app",
-    "https://parcel-ease-76d37.firebaseapp.com",
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -625,61 +625,65 @@ async function run() {
       }
     });
 
-    app.patch("/assign-parcel/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const { id } = req.params;
-      const { deliveryManId } = req.body;
-    
-      if (!ObjectId.isValid(id) || !ObjectId.isValid(deliveryManId)) {
-        return res
-          .status(400)
-          .send({ message: "Invalid parcel or delivery man ID" });
-      }
-    
-      try {
-        const result = await parcelsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: { deliveryManId, status: "assigned" } }
-        );
-    
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ message: "Parcel not found" });
+    app.patch(
+      "/assign-parcel/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const { deliveryManId } = req.body;
+
+        if (!ObjectId.isValid(id) || !ObjectId.isValid(deliveryManId)) {
+          return res
+            .status(400)
+            .send({ message: "Invalid parcel or delivery man ID" });
         }
-    
-        const deliveryMan = await usersCollection.findOne({
-          _id: new ObjectId(deliveryManId),
-        });
-    
-        if (deliveryMan) {
-          const notification = {
-            email: deliveryMan.email,
-            message: `You have been assigned a new parcel.`,
-            image: deliveryMan.image,
-            name: deliveryMan.name,
-            phone: deliveryMan.phone,
-            role: deliveryMan.role,
-            averageRating: deliveryMan.averageRating,
-            totalDelivered: deliveryMan.totalDelivered,
-            deliveryDate: deliveryMan.deliveryDate,
-            read: false,
-            createdAt: new Date(),
-          };
-    
-          await notificationsCollection.insertOne(notification);
-    
-          // Emit real-time notification to the assigned delivery man
-          io.emit("new-notification", notification);
+
+        try {
+          const result = await parcelsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { deliveryManId, status: "assigned" } }
+          );
+
+          if (result.matchedCount === 0) {
+            return res.status(404).send({ message: "Parcel not found" });
+          }
+
+          const deliveryMan = await usersCollection.findOne({
+            _id: new ObjectId(deliveryManId),
+          });
+
+          if (deliveryMan) {
+            const notification = {
+              email: deliveryMan.email,
+              message: `You have been assigned a new parcel.`,
+              image: deliveryMan.image,
+              name: deliveryMan.name,
+              phone: deliveryMan.phone,
+              role: deliveryMan.role,
+              averageRating: deliveryMan.averageRating,
+              totalDelivered: deliveryMan.totalDelivered,
+              deliveryDate: deliveryMan.deliveryDate,
+              read: false,
+              createdAt: new Date(),
+            };
+
+            await notificationsCollection.insertOne(notification);
+
+            // Emit real-time notification to the assigned delivery man
+            io.emit("new-notification", notification);
+          }
+
+          res.send({ success: true, message: "Parcel assigned successfully" });
+        } catch (error) {
+          res.status(500).send({
+            success: false,
+            message: "Failed to assign parcel",
+            error: error.message,
+          });
         }
-    
-        res.send({ success: true, message: "Parcel assigned successfully" });
-      } catch (error) {
-        res.status(500).send({
-          success: false,
-          message: "Failed to assign parcel",
-          error: error.message,
-        });
       }
-    });
-    
+    );
 
     app.patch("/update-parcel-status/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
